@@ -4,6 +4,7 @@ package checks
 
 import (
 	"context"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 
@@ -37,24 +38,37 @@ type Result struct {
 	Err      error
 }
 
-func pass(evidence ...string) Result  { return Result{Status: StatusPass, Evidence: evidence} }
-func fail(evidence ...string) Result  { return Result{Status: StatusFail, Evidence: evidence} }
-func skip(evidence ...string) Result  { return Result{Status: StatusSkip, Evidence: evidence} }
-func errResult(err error) Result      { return Result{Status: StatusError, Err: err} }
+func pass(evidence ...string) Result { return Result{Status: StatusPass, Evidence: evidence} }
+func fail(evidence ...string) Result { return Result{Status: StatusFail, Evidence: evidence} }
+func skip(evidence ...string) Result { return Result{Status: StatusSkip, Evidence: evidence} }
+func errResult(err error) Result     { return Result{Status: StatusError, Err: err} }
 
 // Check is a single CIS benchmark check.
 type Check interface {
-	ID() string       // e.g. "IAM-1"
-	Title() string    // human-readable, includes the CIS reference
+	ID() string    // e.g. "IAM-1"
+	Title() string // human-readable, includes the CIS reference
 	Severity() Severity
 	Run(ctx context.Context) Result
 }
 
 // All constructs every implemented check against the given clients.
 func All(c *awsclient.Clients) []Check {
+	now := time.Now()
 	return []Check{
 		RootMFA{client: c.IAM},
 		PublicAccessBlock{account: c.S3Control, s3: c.S3, accountID: c.AccountID},
+		UnusedCredentials{client: c.IAM, now: now, pollInterval: time.Second},
+		FullAdminPolicies{client: c.IAM},
+		PasswordPolicy{client: c.IAM},
+		BucketEncryption{client: c.S3},
+		BucketLogging{client: c.S3},
+		OpenSSH{client: c.EC2},
+		OpenRDP{client: c.EC2},
+		DefaultSGRestricts{client: c.EC2},
+		CloudTrailEnabled{client: c.CloudTrail},
+		CloudTrailValidation{client: c.CloudTrail},
+		EBSEncryption{client: c.EC2},
+		RDSEncryption{client: c.RDS},
 	}
 }
 

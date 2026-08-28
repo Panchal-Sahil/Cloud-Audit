@@ -140,3 +140,127 @@ func TestPublicAccessBlock(t *testing.T) {
 		})
 	}
 }
+
+type fakeBucketEncryption struct {
+	buckets   []string
+	encrypted map[string]bool
+	listErr   error
+}
+
+func (f fakeBucketEncryption) ListBuckets(ctx context.Context, params *s3.ListBucketsInput, optFns ...func(*s3.Options)) (*s3.ListBucketsOutput, error) {
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	out := &s3.ListBucketsOutput{}
+	for _, b := range f.buckets {
+		out.Buckets = append(out.Buckets, s3types.Bucket{Name: aws.String(b)})
+	}
+	return out, nil
+}
+
+func (f fakeBucketEncryption) GetBucketEncryption(ctx context.Context, params *s3.GetBucketEncryptionInput, optFns ...func(*s3.Options)) (*s3.GetBucketEncryptionOutput, error) {
+	if f.encrypted[aws.ToString(params.Bucket)] {
+		return &s3.GetBucketEncryptionOutput{ServerSideEncryptionConfiguration: &s3types.ServerSideEncryptionConfiguration{
+			Rules: []s3types.ServerSideEncryptionRule{{}},
+		}}, nil
+	}
+	return nil, fakeAPIError("ServerSideEncryptionConfigurationNotFoundError")
+}
+
+func TestBucketEncryption(t *testing.T) {
+	tests := []struct {
+		name   string
+		client fakeBucketEncryption
+		want   Status
+	}{
+		{
+			name:   "all buckets encrypted",
+			client: fakeBucketEncryption{buckets: []string{"a", "b"}, encrypted: map[string]bool{"a": true, "b": true}},
+			want:   StatusPass,
+		},
+		{
+			name:   "one bucket not encrypted",
+			client: fakeBucketEncryption{buckets: []string{"a", "b"}, encrypted: map[string]bool{"a": true}},
+			want:   StatusFail,
+		},
+		{
+			name:   "no buckets",
+			client: fakeBucketEncryption{},
+			want:   StatusSkip,
+		},
+		{
+			name:   "list buckets error",
+			client: fakeBucketEncryption{listErr: errors.New("access denied")},
+			want:   StatusError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := BucketEncryption{client: tt.client}.Run(context.Background())
+			if got.Status != tt.want {
+				t.Errorf("status = %s, want %s (evidence %v, err %v)", got.Status, tt.want, got.Evidence, got.Err)
+			}
+		})
+	}
+}
+
+type fakeBucketLogging struct {
+	buckets []string
+	logged  map[string]bool
+	listErr error
+}
+
+func (f fakeBucketLogging) ListBuckets(ctx context.Context, params *s3.ListBucketsInput, optFns ...func(*s3.Options)) (*s3.ListBucketsOutput, error) {
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	out := &s3.ListBucketsOutput{}
+	for _, b := range f.buckets {
+		out.Buckets = append(out.Buckets, s3types.Bucket{Name: aws.String(b)})
+	}
+	return out, nil
+}
+
+func (f fakeBucketLogging) GetBucketLogging(ctx context.Context, params *s3.GetBucketLoggingInput, optFns ...func(*s3.Options)) (*s3.GetBucketLoggingOutput, error) {
+	if f.logged[aws.ToString(params.Bucket)] {
+		return &s3.GetBucketLoggingOutput{LoggingEnabled: &s3types.LoggingEnabled{TargetBucket: aws.String("logs")}}, nil
+	}
+	return &s3.GetBucketLoggingOutput{}, nil
+}
+
+func TestBucketLogging(t *testing.T) {
+	tests := []struct {
+		name   string
+		client fakeBucketLogging
+		want   Status
+	}{
+		{
+			name:   "all buckets logged",
+			client: fakeBucketLogging{buckets: []string{"a", "b"}, logged: map[string]bool{"a": true, "b": true}},
+			want:   StatusPass,
+		},
+		{
+			name:   "one bucket not logged",
+			client: fakeBucketLogging{buckets: []string{"a", "b"}, logged: map[string]bool{"a": true}},
+			want:   StatusFail,
+		},
+		{
+			name:   "no buckets",
+			client: fakeBucketLogging{},
+			want:   StatusSkip,
+		},
+		{
+			name:   "list buckets error",
+			client: fakeBucketLogging{listErr: errors.New("access denied")},
+			want:   StatusError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := BucketLogging{client: tt.client}.Run(context.Background())
+			if got.Status != tt.want {
+				t.Errorf("status = %s, want %s (evidence %v, err %v)", got.Status, tt.want, got.Evidence, got.Err)
+			}
+		})
+	}
+}
