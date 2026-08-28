@@ -75,11 +75,26 @@ Dockerfile             <- multi-stage: build in golang, run in scratch/distroles
 
 ## Milestones
 
-1. **Scaffold** — repo structure, Go module, cobra CLI skeleton, Dockerfile
-2. **AWS client** — credential chain setup, region config, basic connectivity test
-3. **First checks** — IAM root MFA + S3 public access (prove the pattern works)
-4. **Remaining checks** — network, logging, encryption (parallel development)
-5. **Reporting** — JSON output + terminal summary with pass/fail/score
-6. **Docker** — multi-stage build, verify the image runs standalone
-7. **CI** — GitHub Actions: build, test, lint (golangci-lint), optionally scan a test account
-8. **Polish** — README with usage, sample output, architecture diagram
+1. **Scaffold** — repo structure, Go module, cobra CLI skeleton, Dockerfile — DONE (2026-08-28)
+2. **AWS client** — credential chain setup, region config, basic connectivity test — DONE (2026-08-28)
+3. **First checks** — IAM root MFA + S3 public access (prove the pattern works) — DONE (2026-08-28)
+4. **Remaining checks** — network, logging, encryption (parallel development) — DONE (2026-08-28)
+5. **Reporting** — JSON output + terminal summary with pass/fail/score — DONE (2026-08-28)
+6. **Docker** — multi-stage build, verify the image runs standalone — DONE (2026-08-28)
+7. **CI** — GitHub Actions: build, test, lint (golangci-lint), optionally scan a test account — DONE (2026-08-28)
+8. **Polish** — README with usage, sample output, architecture diagram — DONE (2026-08-28)
+
+## Status (as of 2026-08-28)
+
+All 8 milestones above are functionally complete. 14 CIS checks are implemented and tested
+(IAM-1..4, S3-1..3, NET-1..3, LOG-1..2, ENC-1..2), CI is green on `main`, and the repo is public:
+https://github.com/Panchal-Sahil/cloudaudit
+
+**Deferred**: live end-to-end verification against a real AWS account. The user does not yet have
+an AWS account. Once available:
+- Run `cloudaudit scan` against it and confirm no checks return `StatusError`
+- Replace the README's sample terminal output with real (redacted) output
+- Optionally add `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION` as GitHub repo
+  secrets to activate the optional CI live-scan job
+
+See `CLAUDE.md` for day-to-day dev conventions, layout, and full session history.
