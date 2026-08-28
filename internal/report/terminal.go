@@ -17,27 +17,38 @@ var statusColors = map[checks.Status]*color.Color{
 	checks.StatusSkip:  color.New(color.FgHiBlack, color.Bold),
 }
 
-// PrintTerminal writes a color-coded summary of the results to w.
-func PrintTerminal(w io.Writer, results []checks.CheckResult) {
-	counts := map[checks.Status]int{}
-	for _, r := range results {
-		counts[r.Status]++
-		c, ok := statusColors[r.Status]
+func scoreColor(score float64) *color.Color {
+	switch {
+	case score >= 90:
+		return color.New(color.FgGreen, color.Bold)
+	case score >= 70:
+		return color.New(color.FgYellow, color.Bold)
+	default:
+		return color.New(color.FgRed, color.Bold)
+	}
+}
+
+// PrintTerminal writes a color-coded summary of the report to w.
+func PrintTerminal(w io.Writer, r *Report) {
+	for _, res := range r.Results {
+		c, ok := statusColors[res.Status]
 		if !ok {
 			c = color.New()
 		}
-		fmt.Fprintf(w, "%-6s %-6s [%-8s] %s\n", c.Sprint(r.Status), r.ID, r.Severity, r.Title)
-		for _, e := range r.Evidence {
+		fmt.Fprintf(w, "%-6s %-6s [%-8s] %s\n", c.Sprint(res.Status), res.ID, res.Severity, res.Title)
+		for _, e := range res.Evidence {
 			fmt.Fprintf(w, "         - %s\n", e)
 		}
-		if r.Error != "" {
-			fmt.Fprintf(w, "         ! %s\n", r.Error)
+		if res.Error != "" {
+			fmt.Fprintf(w, "         ! %s\n", res.Error)
 		}
 	}
 
+	s := r.Summary
 	fmt.Fprintf(w, "\n%d checks: %s passed, %s failed, %d errored, %d skipped\n",
-		len(results),
-		statusColors[checks.StatusPass].Sprint(counts[checks.StatusPass]),
-		statusColors[checks.StatusFail].Sprint(counts[checks.StatusFail]),
-		counts[checks.StatusError], counts[checks.StatusSkip])
+		s.Total,
+		statusColors[checks.StatusPass].Sprint(s.Passed),
+		statusColors[checks.StatusFail].Sprint(s.Failed),
+		s.Errored, s.Skipped)
+	fmt.Fprintf(w, "Compliance score: %s\n", scoreColor(r.Score).Sprintf("%.1f%%", r.Score))
 }
