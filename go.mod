@@ -12,7 +12,10 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.109.1
 	github.com/aws/aws-sdk-go-v2/service/s3control v1.75.1
 	github.com/aws/aws-sdk-go-v2/service/sts v1.47.1
+	github.com/aws/smithy-go v1.28.1
+	github.com/fatih/color v1.19.0
 	github.com/spf13/cobra v1.10.2
+	golang.org/x/sync v0.22.0
 )
 
 require (
@@ -29,7 +32,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/signin v1.7.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.35.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.40.1 // indirect
-	github.com/aws/smithy-go v1.28.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 )

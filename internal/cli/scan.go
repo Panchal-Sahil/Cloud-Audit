@@ -6,6 +6,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Panchal-Sahil/cloudaudit/internal/awsclient"
+	"github.com/Panchal-Sahil/cloudaudit/internal/checks"
+	"github.com/Panchal-Sahil/cloudaudit/internal/report"
 )
 
 var (
@@ -24,10 +26,11 @@ var scanCmd = &cobra.Command{
 			return fmt.Errorf("connecting to AWS: %w", err)
 		}
 
-		fmt.Printf("Auditing account %s as %s (region %s)\n",
+		fmt.Printf("Auditing account %s as %s (region %s)\n\n",
 			clients.AccountID, clients.CallerARN, clients.Region)
 
-		// Checks are wired in as they are implemented.
+		results := checks.RunAll(ctx, checks.All(clients))
+		report.PrintTerminal(cmd.OutOrStdout(), results)
 		return nil
 	},
 }

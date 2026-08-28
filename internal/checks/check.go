@@ -5,6 +5,8 @@ package checks
 import (
 	"context"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/Panchal-Sahil/cloudaudit/internal/awsclient"
 )
 
@@ -51,6 +53,44 @@ type Check interface {
 // All constructs every implemented check against the given clients.
 func All(c *awsclient.Clients) []Check {
 	return []Check{
-		// Checks are appended here as they are implemented.
+		RootMFA{client: c.IAM},
+		PublicAccessBlock{account: c.S3Control, s3: c.S3, accountID: c.AccountID},
 	}
+}
+
+// CheckResult pairs a check's metadata with its outcome.
+type CheckResult struct {
+	ID       string   `json:"id"`
+	Title    string   `json:"title"`
+	Severity Severity `json:"severity"`
+	Status   Status   `json:"status"`
+	Evidence []string `json:"evidence,omitempty"`
+	Error    string   `json:"error,omitempty"`
+}
+
+// RunAll runs every check concurrently (bounded) and returns results in the
+// same order as the input. All API calls are read-only, so concurrency is safe.
+func RunAll(ctx context.Context, cs []Check) []CheckResult {
+	results := make([]CheckResult, len(cs))
+	var g errgroup.Group
+	g.SetLimit(5)
+	for i, c := range cs {
+		g.Go(func() error {
+			r := c.Run(ctx)
+			cr := CheckResult{
+				ID:       c.ID(),
+				Title:    c.Title(),
+				Severity: c.Severity(),
+				Status:   r.Status,
+				Evidence: r.Evidence,
+			}
+			if r.Err != nil {
+				cr.Error = r.Err.Error()
+			}
+			results[i] = cr
+			return nil
+		})
+	}
+	_ = g.Wait() // check errors are captured in results, never returned
+	return results
 }
