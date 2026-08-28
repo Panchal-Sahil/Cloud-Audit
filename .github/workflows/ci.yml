@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: go build ./...
+      - name: Test
+        run: go test ./...
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@v8
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t cloudaudit:ci .
+      - name: Smoke test
+        run: docker run --rm cloudaudit:ci version
+
+  # Optional live scan of a test account. Runs only when the repo has AWS
+  # credentials configured as secrets; skipped silently otherwise.
+  scan:
+    runs-on: ubuntu-latest
+    needs: build-test
+    if: github.ref == 'refs/heads/main'
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        if: env.AWS_ACCESS_KEY_ID != ''
+        with:
+          go-version-file: go.mod
+      - name: Scan test account
+        if: env.AWS_ACCESS_KEY_ID != ''
+        # Findings in the test account are expected (exit 2); only an
+        # operational failure (exit 1) should fail the job.
+        run: go run ./cmd/cloudaudit scan --output json || test $? -eq 2
