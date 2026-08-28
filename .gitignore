@@ -1,0 +1,4 @@
+/cloudaudit
+/dist/
+*.report.json
+.env
