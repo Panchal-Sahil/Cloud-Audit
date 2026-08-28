@@ -58,10 +58,20 @@ var scanCmd = &cobra.Command{
 		}
 
 		if rep.Summary.Failed > 0 {
-			return fmt.Errorf("%d of %d checks failed", rep.Summary.Failed, rep.Summary.Total)
+			return ChecksFailedError{Failed: rep.Summary.Failed, Total: rep.Summary.Total}
 		}
 		return nil
 	},
+}
+
+// ChecksFailedError distinguishes compliance findings (exit code 2) from
+// operational errors (exit code 1).
+type ChecksFailedError struct {
+	Failed, Total int
+}
+
+func (e ChecksFailedError) Error() string {
+	return fmt.Sprintf("%d of %d checks failed", e.Failed, e.Total)
 }
 
 func writeReportFile(path string, rep *report.Report) error {
