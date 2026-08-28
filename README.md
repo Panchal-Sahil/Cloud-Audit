@@ -1,5 +1,7 @@
 # CloudAudit
 
+[![CI](https://github.com/Panchal-Sahil/cloudaudit/actions/workflows/ci.yml/badge.svg)](https://github.com/Panchal-Sahil/cloudaudit/actions/workflows/ci.yml)
+
 A Go CLI that audits an AWS account against a curated set of [CIS AWS Foundations
 Benchmark](https://www.cisecurity.org/benchmark/amazon_web_services) checks and produces a
 scored compliance report — JSON for machines, a color-coded summary for humans.
