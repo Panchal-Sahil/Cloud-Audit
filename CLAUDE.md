@@ -1,8 +1,10 @@
-# CloudAudit
+# CLAUDE.md
 
-Go CLI (module `github.com/Panchal-Sahil/cloudaudit`) that audits an AWS account against the CIS
-AWS Foundations Benchmark and outputs a severity-weighted compliance report. Public repo:
-https://github.com/Panchal-Sahil/cloudaudit (CI green on `main`).
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+CloudAudit is a Go CLI (module `github.com/Panchal-Sahil/cloudaudit`) that audits an AWS account
+against the CIS AWS Foundations Benchmark and outputs a severity-weighted compliance report.
+Every AWS API call is read-only. Public repo: https://github.com/Panchal-Sahil/cloudaudit.
 
 See `PROJECT.md` for the full rationale, scope constraints, and milestone list — this file is
 about how to work on the codebase day to day. See the "Project Session State" section below for
@@ -21,9 +23,18 @@ Dockerfile                multi-stage: golang:1.26 -> distroless/static:nonroot
 .github/workflows/ci.yml  build-test, lint, docker jobs (all required); optional live-scan job
 ```
 
+**Runtime flow**: `cli/scan.go` → `awsclient.New` (credential chain + `sts:GetCallerIdentity`
+preflight, fails fast without a region) → `checks.All` constructs the 14 checks with the service
+clients → `checks.RunAll` runs them through a bounded errgroup → `report.New` computes summary +
+score → `report.PrintTerminal` or `report.WriteJSON`.
+
 ## Checks implemented (14 total)
 
 IAM-1..4, S3-1..3, NET-1..3, LOG-1..2, ENC-1..2 across `internal/checks/{iam,s3,network,logging,encryption}.go`.
+
+**Adding a check**: define the struct with a narrow client interface, implement
+`ID`/`Title`/`Severity`/`Run` (Title includes the CIS reference), register it in `checks.All()`
+in `check.go`, add table-driven tests, and add the row to README's checks table.
 
 ## Conventions
 
@@ -52,13 +63,13 @@ IAM-1..4, S3-1..3, NET-1..3, LOG-1..2, ENC-1..2 across `internal/checks/{iam,s3,
 ```
 go build ./...
 go test ./...
+go test ./internal/checks/ -run TestRootMFA        # single test (add /subtest for one case)
 golangci-lint run          # config: .golangci.yml (v2 format; errcheck excludes fmt.Fprint*)
 ```
 
-Toolchain (installed via `dnf` on this machine): Go 1.26.7, golangci-lint 2.11.3.
-
-Docker: `docker build .` — this login session needs `sg docker` to pick up docker-group membership
-granted today; a fresh shell/login won't need it going forward.
+Docker: `docker build -t cloudaudit .` then `docker run --rm cloudaudit version` as a smoke test.
+(If docker-group membership was granted after this login session started, prefix commands with
+`sg docker -c '...'`.)
 
 ## Running a real scan
 
