@@ -2,3 +2,4 @@
 /dist/
 *.report.json
 .env
+CLAUDE.md
